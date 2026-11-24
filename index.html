@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Screening Screen Preview</title>
+<style>
+  :root {
+    --sr-bg: #fdfaf1; --sr-text: #2e2e2c; --sr-muted: #6f6f6b; --sr-divider: #e5e2d9;
+    --sr-in-range: #4e7a5c; --sr-above-range: #a2441a;
+    --ui-bg: #eceae4; --ui-panel: #ffffff; --ui-border: #d9d6ce;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ui-bg); color: var(--sr-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; }
+  .app { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; padding: 24px 16px; }
+
+  /* ---------- Test controls (not part of the in-game screen) ---------- */
+  .controls { background: var(--ui-panel); border: 1px solid var(--ui-border); border-radius: 12px;
+    padding: 16px; width: 100%; max-width: 420px; font-size: 14px; align-self: flex-start; }
+  .controls h1 { font-size: 16px; margin: 0 0 4px; }
+  .controls p.hint { margin: 0 0 14px; color: var(--sr-muted); font-size: 13px; }
+  .controls label { display: block; font-size: 12px; color: var(--sr-muted); margin: 10px 0 4px; }
+  .controls select, .controls input { width: 100%; padding: 7px 8px; font: inherit; border: 1px solid var(--ui-border); border-radius: 6px; background: #fff; }
+  .test-edit { border-top: 1px solid var(--ui-border); padding-top: 10px; margin-top: 12px; }
+  .test-edit .tname { font-weight: 600; font-size: 13px; }
+  .test-edit .grid { display: grid; grid-template-columns: 1.2fr 1fr 0.7fr; gap: 6px; margin-top: 6px; }
+  .row-btns { display: flex; gap: 8px; margin-top: 14px; }
+  .row-btns button { flex: 1; padding: 8px; font: inherit; border: 1px solid var(--ui-border); border-radius: 6px; background: #f6f5f1; cursor: pointer; }
+
+  /* ---------- In-game screen (mirrors src/components/screening/ScreeningResults.scss) ---------- */
+  .phone { width: 100%; max-width: 400px; background: var(--sr-bg); border-radius: 28px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.12); padding: 8px 16px 20px; align-self: flex-start; }
+  .screening-results { background: var(--sr-bg); -webkit-font-smoothing: antialiased; }
+  .screening-results__char { padding: 14px 4px 0; font-size: 13px; color: var(--sr-muted); text-transform: uppercase; letter-spacing: .06em; }
+  .screening-results__date { padding: 6px 4px 18px; font-size: 15px; color: var(--sr-muted); border-bottom: 1px solid var(--sr-divider); }
+  .screening-results__date-value { color: var(--sr-text); font-weight: 500; }
+  .screening-results__list { list-style: none; margin: 0; padding: 0; }
+  .screening-results__row { padding: 18px 4px 20px; border-bottom: 1px solid var(--sr-divider); }
+  .screening-results__row:last-child { border-bottom: none; }
+  .screening-results__name { font-size: 22px; letter-spacing: -0.01em; line-height: 1.25; margin-bottom: 8px; }
+  .screening-results__line { display: flex; align-items: baseline; gap: 10px; font-size: 19px; line-height: 1.3; flex-wrap: wrap; }
+  .screening-results__status { font-weight: 500; }
+  .screening-results__status--in-range { color: var(--sr-in-range); }
+  .screening-results__status--above-range, .screening-results__status--below-range { color: var(--sr-above-range); }
+  .screening-results__dot { color: var(--sr-muted); font-size: 14px; }
+  .screening-results__value { font-weight: 500; }
+  .screening-results__unit { margin-left: -4px; font-size: 15px; color: var(--sr-muted); }
+  .game-tag { text-align: center; font-size: 11px; color: var(--sr-muted); margin-top: 10px; letter-spacing: .04em; }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="phone" aria-label="In-game screening screen">
+    <div class="screening-results">
+      <div class="screening-results__char" id="char-name"></div>
+      <div class="screening-results__date">Collected <span class="screening-results__dot">·</span>
+        <span class="screening-results__date-value" id="date-out"></span></div>
+      <ul class="screening-results__list" id="list"></ul>
+    </div>
+    <div class="game-tag">WaterFlow · fictional character data</div>
+  </section>
+
+  <section class="controls" aria-label="Test controls">
+    <h1>Screening screen tester</h1>
+    <p class="hint">Pick a character or edit any field. The screen on the left updates as you type.</p>
+    <label for="char">Character</label>
+    <select id="char"></select>
+    <label for="date">Test date</label>
+    <input type="date" id="date">
+    <div id="editors"></div>
+    <div class="row-btns">
+      <button id="all-clear">All in range</button>
+      <button id="reset">Reset character</button>
+    </div>
+  </section>
+</div>
+
+<script>
+const STATUS = { 'in-range': 'In Range', 'above-range': 'Above Range', 'below-range': 'Below Range' };
+const TESTS = ['Herpes Simplex Virus 1','Chlamydia','Gonorrhea','HIV 1 & 2 Antigen-Antibody',
+  'Herpes Simplex Virus 2','Syphilis - Rapid Plasma Reagin (RPR)','Trichomonas'];
+const CLEAR = { 'Herpes Simplex Virus 1': ['0.42','index'], 'Herpes Simplex Virus 2': ['0.31','index'],
+  'HIV 1 & 2 Antigen-Antibody': ['Non-reactive',''], 'Syphilis - Rapid Plasma Reagin (RPR)': ['Non-reactive',''] };
+const clear = t => ({ name: t, status: 'in-range', value: (CLEAR[t]||['Not Detected'])[0], unit: (CLEAR[t]||['',''])[1] });
+
+// Sample cast. Replace with your game's characters.
+const CHARACTERS = {
+  'Marlow Reyes': { date: '2026-11-24', overrides: {
+    'Herpes Simplex Virus 1': ['above-range','53.4','index'],
+    'Herpes Simplex Virus 2': ['above-range','1.05','index'] } },
+  'June Okafor': { date: '2026-10-02', overrides: {} },
+  'Theo Lindqvist': { date: '2026-08-17', overrides: {
+    'Chlamydia': ['above-range','Detected',''] } },
+};
+function build(name) {
+  const c = CHARACTERS[name];
+  return { name, date: c.date, results: TESTS.map(t => {
+    const o = c.overrides[t]; const base = clear(t);
+    return o ? { ...base, status: o[0], value: o[1], unit: o[2] } : base; }) };
+}
+
+let state;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function render() {
+  $('char-name').textContent = state.name;
+  $('date-out').textContent = fmtDate(state.date);
+  $('list').innerHTML = state.results.map(r => `
+    <li class="screening-results__row">
+      <div class="screening-results__name">${esc(r.name)}</div>
+      <div class="screening-results__line">
+        <span class="screening-results__status screening-results__status--${r.status}">${STATUS[r.status]}</span>
+        <span class="screening-results__dot">·</span>
+        <span class="screening-results__value">${esc(r.value)}</span>
+        ${r.unit ? `<span class="screening-results__unit">${esc(r.unit)}</span>` : ''}
+      </div>
+    </li>`).join('');
+}
+function renderEditors() {
+  $('date').value = state.date;
+  $('editors').innerHTML = state.results.map((r, i) => `
+    <div class="test-edit">
+      <div class="tname">${esc(r.name)}</div>
+      <div class="grid">
+        <select data-i="${i}" data-k="status">${Object.entries(STATUS).map(([k,v]) =>
+          `<option value="${k}"${k===r.status?' selected':''}>${v}</option>`).join('')}</select>
+        <input data-i="${i}" data-k="value" value="${esc(r.value)}" aria-label="Value">
+        <input data-i="${i}" data-k="unit" value="${esc(r.unit)}" placeholder="unit" aria-label="Unit">
+      </div>
+    </div>`).join('');
+}
+function load(name) { state = build(name); renderEditors(); render(); }
+
+$('char').innerHTML = Object.keys(CHARACTERS).map(n => `<option>${esc(n)}</option>`).join('');
+$('char').addEventListener('change', e => load(e.target.value));
+$('date').addEventListener('input', e => { state.date = e.target.value; render(); });
+$('editors').addEventListener('input', e => {
+  const { i, k } = e.target.dataset; if (i === undefined) return;
+  state.results[i][k] = e.target.value; render();
+});
+$('all-clear').addEventListener('click', () => { state.results = TESTS.map(clear); renderEditors(); render(); });
+$('reset').addEventListener('click', () => load($('char').value));
+load(Object.keys(CHARACTERS)[0]);
+</script>
+</body>
+</html>
