@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tonight's Pick</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+/* Layout: one narrow phone-first column. Marquee header, live standings, the picks you tap to rank, then add a pick. */
+:root {
+  --bg: #eceef5;
+  --surface: #ffffff;
+  --sunk: #f5f5fa;
+  --ink: #1d1a2c;
+  --muted: #5f5a76;
+  --line: #d8d7e6;
+  --accent: #a91e38;
+  --accent-ink: #ffffff;
+  --accent-soft: #f7e3e7;
+  --bulb: #d99a1a;
+  --good: #2b8a4b;
+  --warn: #a67c00;
+  --bad: #c23a2b;
+  --tomato: #d23b22;
+  --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14111d; --surface: #201b2e; --sunk: #191524; --ink: #f1eef8; --muted: #a8a2be;
+    --line: #362f4b; --accent: #f0566f; --accent-ink: #1b0a10; --accent-soft: #3a1a26;
+    --bulb: #f4bb47; --good: #5cc27e; --warn: #e2be45; --bad: #f07264; --tomato: #f2674f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14111d; --surface: #201b2e; --sunk: #191524; --ink: #f1eef8; --muted: #a8a2be;
+  --line: #362f4b; --accent: #f0566f; --accent-ink: #1b0a10; --accent-soft: #3a1a26;
+  --bulb: #f4bb47; --good: #5cc27e; --warn: #e2be45; --bad: #f07264; --tomato: #f2674f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+.wrap {
+  max-width: 640px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+  display: flex; flex-direction: column; gap: 22px;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Marquee header */
+header { display: flex; flex-direction: column; gap: 10px; }
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 {
+  font-family: var(--display); font-weight: 800; text-transform: uppercase;
+  font-size: clamp(2.6rem, 11vw, 3.6rem); line-height: .9; letter-spacing: .01em; margin: 0;
+}
+h1 span { color: var(--accent); }
+.bulbs {
+  height: 8px; border-radius: 4px;
+  background: radial-gradient(circle at 4px 4px, var(--bulb) 2.6px, transparent 3.2px) 0 0 / 14px 8px repeat-x;
+  opacity: .9;
+}
+.sub { color: var(--muted); margin: 0; font-size: .95rem; }
+.ghost {
+  border: 1px solid var(--line); background: transparent; border-radius: 999px;
+  padding: 7px 14px; font-size: .85rem; font-weight: 600; color: var(--muted);
+}
+.ghost:hover { color: var(--ink); border-color: var(--muted); }
+.ghost.danger { color: var(--bad); border-color: var(--bad); }
+
+h2 {
+  font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+  font-size: 1.05rem; margin: 0; color: var(--muted);
+}
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.hint { color: var(--muted); font-size: .85rem; }
+
+/* Standings */
+.board {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px; display: flex; flex-direction: column; gap: 14px;
+}
+.leader-label { font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.leader-title { font-family: var(--display); font-weight: 800; font-size: 2rem; line-height: 1; text-transform: uppercase; text-wrap: balance; margin-top: 4px; overflow-wrap: anywhere; }
+.leader-meta { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+.rows { display: flex; flex-direction: column; gap: 8px; }
+.row { display: grid; grid-template-columns: 1.6rem 1fr auto; gap: 10px; align-items: center; font-size: .92rem; }
+.row .pos { font-family: var(--mono); color: var(--muted); font-size: .8rem; text-align: right; }
+.row .name { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.row .name b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar { height: 6px; border-radius: 3px; background: var(--sunk); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.row:not(:first-child) .bar i { background: var(--muted); opacity: .55; }
+.row .pts { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .82rem; color: var(--muted); }
+.voters { display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px dashed var(--line); padding-top: 12px; }
+.chip { font-size: .78rem; padding: 3px 9px; border-radius: 999px; background: var(--sunk); border: 1px solid var(--line); color: var(--muted); }
+.chip.done { color: var(--good); border-color: var(--good); }
+.empty-board { color: var(--muted); margin: 0; }
+
+/* Add form */
+form.add { display: flex; flex-direction: column; gap: 8px; }
+.add-row { display: flex; gap: 8px; }
+.add input {
+  flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface);
+}
+.add input::placeholder { color: var(--muted); opacity: .8; }
+.add #note { font-size: .9rem; padding: 9px 14px; }
+.primary {
+  border: 0; border-radius: 10px; padding: 0 18px; font-weight: 700;
+  background: var(--accent); color: var(--accent-ink);
+}
+.primary:disabled { opacity: .5; cursor: default; }
+.formmsg { font-size: .85rem; color: var(--bad); min-height: 1.1em; margin: 0; }
+
+/* Picks */
+.picks { display: flex; flex-direction: column; gap: 10px; }
+.pick {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px;
+}
+.pick.ranked { border-color: var(--accent); }
+.rankbtn {
+  width: 44px; height: 44px; border-radius: 50%; flex: none;
+  border: 2px dashed var(--line); background: transparent; color: var(--muted);
+  font-family: var(--mono); font-weight: 700; font-size: 1.1rem;
+  display: grid; place-items: center;
+}
+.rankbtn:hover { border-color: var(--accent); color: var(--accent); }
+.pick.ranked .rankbtn { border: 0; background: var(--accent); color: var(--accent-ink); }
+.pinfo { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ptitle { font-family: var(--display); font-weight: 800; font-size: 1.45rem; line-height: 1.02; text-transform: uppercase; overflow-wrap: anywhere; }
+.ptitle small { font-family: var(--body); font-weight: 500; font-size: .85rem; color: var(--muted); text-transform: none; margin-left: 6px; }
+.scores { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.score { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--muted); }
+.score .num { font-family: var(--mono); font-weight: 700; font-size: .9rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tm { width: 10px; height: 10px; border-radius: 50%; background: var(--tomato); }
+.tm.rotten { background: var(--good); border-radius: 3px 50% 40% 60%; }
+.ms {
+  font-family: var(--mono); font-weight: 700; font-size: .82rem; min-width: 30px; height: 24px;
+  display: inline-grid; place-items: center; border-radius: 5px; color: #fff; padding: 0 4px;
+}
+.ms.g { background: var(--good); } .ms.y { background: var(--warn); } .ms.r { background: var(--bad); }
+.facts { font-size: .82rem; color: var(--muted); }
+.logline { font-size: .9rem; margin: 0; }
+.note { font-size: .85rem; color: var(--muted); margin: 0; }
+.note b { color: var(--ink); font-weight: 600; }
+.links { display: flex; gap: 12px; font-size: .78rem; flex-wrap: wrap; }
+.links a { color: var(--muted); }
+.links a:hover { color: var(--accent); }
+.links button { border: 0; background: none; padding: 0; color: var(--accent); font-size: .78rem; font-weight: 600; text-decoration: underline; }
+.looking { font-size: .82rem; color: var(--muted); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .looking { animation: none; } }
+.remove {
+  border: 0; background: transparent; color: var(--muted); font-size: .8rem; padding: 4px 6px; border-radius: 6px;
+}
+.remove:hover { color: var(--bad); }
+.remove.confirm { color: var(--accent-ink); background: var(--bad); }
+.empty {
+  border: 2px dashed var(--line); border-radius: 14px; padding: 24px 18px; text-align: center; color: var(--muted);
+}
+.empty b { display: block; font-family: var(--display); font-size: 1.3rem; text-transform: uppercase; color: var(--ink); margin-bottom: 4px; }
+.notice { background: var(--accent-soft); border-radius: 10px; padding: 10px 14px; font-size: .88rem; }
+.namepick { display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--accent); border-radius: 14px; padding: 14px; }
+.namepick label { font-weight: 700; }
+.namepick input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--sunk); }
+.namepick .primary { padding: 0 16px; }
+.known { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.known:empty { display: none; }
+.chip.pickme { cursor: pointer; color: var(--ink); font-size: .85rem; padding: 6px 12px; }
+.chip.pickme:hover { border-color: var(--accent); color: var(--accent); }
+.me { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: .95rem; }
+.me b { font-family: var(--display); font-size: 1.25rem; text-transform: uppercase; color: var(--accent); letter-spacing: .02em; }
+footer { color: var(--muted); font-size: .78rem; line-height: 1.5; border-top: 1px solid var(--line); padding-top: 14px; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: .88rem;
+  max-width: calc(100% - 32px); z-index: 20;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="top">
+      <h1>Tonight's <span>Pick</span></h1>
+      <button class="ghost" id="newNight" type="button" hidden>Start a new night</button>
+    </div>
+    <div class="bulbs" aria-hidden="true"></div>
+    <p class="sub" id="sub">Everyone nominates, everyone ranks. The movie with the most points wins.</p>
+  </header>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <section class="who" aria-label="Who's voting">
+    <form id="nameForm" class="namepick" autocomplete="off" hidden>
+      <label for="myname">Who's voting on this phone?</label>
+      <div class="add-row">
+        <input id="myname" maxlength="30" placeholder="Your name" required>
+        <button class="primary" type="submit">That's me</button>
+      </div>
+      <div class="known" id="known"></div>
+    </form>
+    <div class="me" id="meBar" hidden>
+      <span>Voting as <b id="meName"></b></span>
+      <button class="ghost" id="switchMe" type="button">Switch person</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-stand">
+    <div class="section-head"><h2 id="h-stand">Standings</h2><span class="hint" id="howScored">1st place gets the most points</span></div>
+    <div class="board" id="board" style="margin-top:8px">
+      <p class="empty-board">Loading the shared list…</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-add">
+    <h2 id="h-add">Nominate a movie</h2>
+    <form class="add" id="addForm" style="margin-top:8px" autocomplete="off">
+      <div class="add-row">
+        <input id="title" name="title" maxlength="120" placeholder="Movie title, e.g. Paddington 2" aria-label="Movie title" required>
+        <button class="primary" id="addBtn" type="submit">Add</button>
+      </div>
+      <input id="note" name="note" maxlength="140" placeholder="Why this one? (optional)" aria-label="Note">
+      <div class="add-row" id="manualScores" hidden>
+        <input id="rtIn" type="number" inputmode="numeric" min="0" max="100" placeholder="Rotten Tomatoes %" aria-label="Rotten Tomatoes Tomatometer percent">
+        <input id="mcIn" type="number" inputmode="numeric" min="0" max="100" placeholder="Metascore" aria-label="Metacritic Metascore">
+      </div>
+      <p class="formmsg" id="formmsg" role="status"></p>
+    </form>
+  </section>
+
+  <section aria-labelledby="h-rank">
+    <div class="section-head">
+      <h2 id="h-rank">Your ranking</h2>
+      <span class="hint">Tap the circles in order: favorite first <button class="ghost" id="clearMine" type="button" hidden style="margin-left:6px;padding:3px 10px">Clear</button></span>
+    </div>
+    <div class="picks" id="picks" style="margin-top:8px"></div>
+  </section>
+
+  <footer id="footer">
+    Scores come from Claude's memory of Rotten Tomatoes (Tomatometer) and Metacritic (Metascore). Claude doesn't check the sites live, so a score can be out of date or missing. Use the links on each movie to check.
+  </footer>
+</div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k === "class") el.className = v;
+      else if (k === "text") el.textContent = v;
+      else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : String(v));
+    }
+    for (const c of kids.flat()) {
+      if (c == null || c === false) continue;
+      el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+    }
+    return el;
+  }
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} },
+  };
+
+  // A person is just a typed name. Their ballot lives at ranks/<key>.
+  const cleanName = (s) => String(s || "").trim().replace(/\s+/g, " ").slice(0, 30);
+  const keyOf = (name) => {
+    const k = cleanName(name).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    return k ? "p-" + k.slice(0, 60) : "";
+  };
+
+  const S = {
+    db: null, sample: null,
+    me: cleanName(store.get("tp-name")) || null,
+    canWrite: true,
+    night: { id: "first" }, rawPicks: [], picks: [], ballots: {},
+    myOrder: [], dirty: false,
+    loaded: { picks: false, ranks: false }, failed: false,
+    confirmRemove: null, confirmNight: false, choosing: false,
+  };
+  const nightId = () => S.night?.id || "first";
+
+  // On-device store with the same shape as the shared db, used outside claude.ai.
+  function localDb() {
+    const KEY = "tp-local-db";
+    let data = {};
+    try { data = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) {}
+    const subs = [];
+    const copy = (o) => JSON.parse(JSON.stringify(o));
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {} };
+    const colOf = (p) => p.split("/").slice(0, -1).join("/");
+    const docSnap = (path) => ({ id: path.split("/").pop(), exists: path in data, data: () => (path in data ? copy(data[path]) : undefined) });
+    const colSnap = (c) => { const docs = Object.keys(data).filter((p) => colOf(p) === c).map(docSnap); return { docs, size: docs.length, empty: !docs.length }; };
+    const emit = (s) => setTimeout(() => s.fn(s.kind === "doc" ? docSnap(s.path) : colSnap(s.path)), 0);
+    const notify = () => subs.forEach(emit);
+    window.addEventListener("storage", (e) => {
+      if (e.key !== KEY) return;
+      try { data = JSON.parse(e.newValue || "{}") || {}; } catch (_) {}
+      notify();
+    });
+    const watch = (kind, path, fn) => { const s = { kind, path, fn }; subs.push(s); emit(s); return () => { const i = subs.indexOf(s); if (i >= 0) subs.splice(i, 1); }; };
+    const docRef = (path) => ({
+      id: path.split("/").pop(), path,
+      get: async () => docSnap(path),
+      set: async (d) => { data[path] = copy(d); save(); notify(); },
+      update: async (d) => { data[path] = { ...(data[path] || {}), ...copy(d) }; save(); notify(); },
+      delete: async () => { delete data[path]; save(); notify(); },
+      onSnapshot: (fn) => watch("doc", path, fn),
+    });
+    return {
+      doc: docRef,
+      collection: (c) => ({
+        doc: (id) => docRef(c + "/" + id),
+        add: async (d) => { const ref = docRef(c + "/" + Math.random().toString(36).slice(2, 12)); await ref.set(d); return ref; },
+        onSnapshot: (fn) => watch("col", c, fn),
+      }),
+    };
+  }
+  const meKey = () => (S.me ? keyOf(S.me) : "");
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 3500);
+  }
+
+  const isMe = (name) => !!S.me && keyOf(name) === meKey();
+  const label = (name) => (isMe(name) ? "You" : cleanName(name) || "Someone");
+
+  // ---------- who's voting ----------
+  function knownNames() {
+    const map = new Map();
+    for (const b of Object.values(S.ballots)) if (b && b.name) map.set(keyOf(b.name), cleanName(b.name));
+    for (const p of S.picks) if (p.addedByName) map.set(keyOf(p.addedByName), cleanName(p.addedByName));
+    return [...map.values()].sort((a, b) => a.localeCompare(b));
+  }
+
+  function renderWho() {
+    const picking = !S.me || S.choosing;
+    $("#nameForm").hidden = !picking;
+    $("#meBar").hidden = picking;
+    $("#meName").textContent = S.me || "";
+    const known = $("#known");
+    known.replaceChildren();
+    const names = knownNames().filter((n) => !isMe(n) || S.choosing);
+    if (picking && names.length) {
+      known.append(h("span", { class: "hint", text: "Or tap your name:" }));
+      names.forEach((n) => known.append(h("button", { class: "chip pickme", type: "button", text: n, onclick: () => setMe(n) })));
+    }
+    if (picking && S.choosing && S.me) {
+      known.append(h("button", { class: "ghost", type: "button", text: "Cancel", style: "padding:3px 10px", onclick: () => { S.choosing = false; render(); } }));
+    }
+  }
+
+  function setMe(name) {
+    const n = cleanName(name);
+    if (!n || !keyOf(n)) return;
+    if (S.dirty) { clearTimeout(saveTimer); saveTimer = null; flush(); }
+    S.me = n; S.choosing = false; S.dirty = false;
+    store.set("tp-name", n);
+    applyMyBallot();
+    render();
+  }
+
+  // ---------- tally (points: 1st = number of picks, last = 1) ----------
+  function tally() {
+    const ids = new Set(S.picks.map((p) => p.id));
+    const N = S.picks.length;
+    const pts = {}, firsts = {}, voters = [];
+    const ballots = { ...S.ballots };
+    if (S.me) ballots[meKey()] = { name: S.me, night: nightId(), order: S.myOrder };
+    for (const b of Object.values(ballots)) {
+      if (!b || b.night !== nightId()) continue;
+      const ord = (Array.isArray(b.order) ? b.order : []).filter((id) => ids.has(id));
+      if (!ord.length) continue;
+      voters.push(cleanName(b.name) || "Someone");
+      ord.forEach((id, i) => { pts[id] = (pts[id] || 0) + (N - i); });
+      firsts[ord[0]] = (firsts[ord[0]] || 0) + 1;
+    }
+    const avg = (p) => {
+      const a = [p.info?.rt, p.info?.mc].filter((x) => typeof x === "number");
+      return a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
+    };
+    const ranked = S.picks
+      .map((p) => ({ p, pts: pts[p.id] || 0, firsts: firsts[p.id] || 0 }))
+      .sort((a, b) => b.pts - a.pts || b.firsts - a.firsts || avg(b.p) - avg(a.p) || a.p.createdAt - b.p.createdAt);
+    return { ranked, voters, max: Math.max(1, voters.length * N) };
+  }
+
+  function participants() {
+    const map = new Map();
+    S.picks.forEach((p) => p.addedByName && map.set(keyOf(p.addedByName), cleanName(p.addedByName)));
+    for (const b of Object.values(S.ballots)) if (b && b.name && b.night === nightId() && (b.order || []).length) map.set(keyOf(b.name), cleanName(b.name));
+    if (S.me && S.myOrder.length) map.set(meKey(), S.me);
+    return [...map.entries()];
+  }
+
+  // ---------- render ----------
+  function render() {
+    const ready = S.loaded.picks && S.loaded.ranks;
+    const writable = !!S.db && S.canWrite;
+    $("#newNight").hidden = !(writable && ready && S.picks.length);
+    $("#newNight").textContent = S.confirmNight ? "Tap again to clear all picks" : "Start a new night";
+    $("#newNight").classList.toggle("danger", S.confirmNight);
+    $("#clearMine").hidden = !S.myOrder.length;
+
+    const last = S.night?.lastWinner;
+    $("#sub").textContent = last
+      ? `Everyone nominates, everyone ranks. Last night's winner: ${last}.`
+      : "Everyone nominates, everyone ranks. The movie with the most points wins.";
+
+    $("#title").disabled = $("#note").disabled = $("#addBtn").disabled = !writable || !ready;
+    $("#myname").disabled = !writable;
+
+    renderWho();
+    renderBoard(ready);
+    renderPicks(ready, writable);
+  }
+
+  function renderBoard(ready) {
+    const board = $("#board");
+    board.replaceChildren();
+    if (!S.db) {
+      board.append(h("p", { class: "empty-board", text: "The shared list isn't available in this view." }));
+      return;
+    }
+    if (!ready) {
+      board.append(h("p", { class: "empty-board", text: S.failed ? "Couldn't reach the shared list. Check your connection and reopen the page." : "Loading the shared list…" }));
+      return;
+    }
+    if (!S.picks.length) {
+      board.append(h("p", { class: "empty-board", text: "No nominations yet. Add a movie below, then everyone ranks." }));
+      return;
+    }
+    const { ranked, voters, max } = tally();
+    const n = S.picks.length;
+    $("#howScored").textContent = `1st place = ${n} pts, last = 1`;
+    const people = participants();
+    const votedKeys = new Set(voters.map(keyOf));
+    if (!voters.length) {
+      board.append(h("p", { class: "empty-board", text: `${n} ${n === 1 ? "movie" : "movies"} nominated. Nobody has ranked yet.` }));
+    } else {
+      const top = ranked[0];
+      const tie = ranked[1] && ranked[1].pts === top.pts && ranked[1].firsts === top.firsts;
+      const allIn = people.every(([k]) => votedKeys.has(k));
+      board.append(h("div", {},
+        h("div", { class: "leader-label", text: tie ? "Tied for the lead" : allIn ? "Tonight's pick" : "Leading" }),
+        h("div", { class: "leader-title", text: top.p.title }),
+        h("div", { class: "leader-meta", text: `${top.pts} pts · first choice for ${top.firsts} of ${voters.length}` + (tie ? ` · tied with ${ranked[1].p.title}` : "") })
+      ));
+      const rows = h("div", { class: "rows" });
+      ranked.forEach((r, i) => {
+        rows.append(h("div", { class: "row" },
+          h("span", { class: "pos", text: i + 1 }),
+          h("div", { class: "name" }, h("b", { text: r.p.title }),
+            h("div", { class: "bar" }, h("i", { style: `width:${Math.round((r.pts / max) * 100)}%` }))),
+          h("span", { class: "pts", text: `${r.pts} pts` })
+        ));
+      });
+      board.append(rows);
+    }
+    const chips = h("div", { class: "voters" });
+    people.forEach(([k, name]) => {
+      const done = votedKeys.has(k);
+      chips.append(h("span", { class: "chip" + (done ? " done" : ""), text: (done ? "✓ " : "") + label(name) + (done ? "" : " · hasn't ranked") }));
+    });
+    if (chips.childNodes.length) board.append(chips);
+  }
+
+  function msClass(v) { return v >= 61 ? "g" : v >= 40 ? "y" : "r"; }
+
+  function renderPicks(ready, writable) {
+    const box = $("#picks");
+    box.replaceChildren();
+    if (!ready) return;
+    if (!S.picks.length) {
+      box.append(h("div", { class: "empty" }, h("b", { text: "No picks yet" }), "Nominate the first movie above. Each pick shows its Tomatometer and Metascore so you can compare."));
+      return;
+    }
+    S.picks.forEach((p) => {
+      const pos = S.myOrder.indexOf(p.id);
+      const info = p.info || {};
+      const q = encodeURIComponent(p.title);
+      const scores = h("div", { class: "scores" });
+      if (p.lookup === "pending") {
+        scores.append(h("span", { class: "looking", text: "Looking up scores…" }));
+      } else {
+        if (typeof info.rt === "number") scores.append(h("span", { class: "score", title: "Rotten Tomatoes Tomatometer" },
+          h("i", { class: "tm" + (info.rt < 60 ? " rotten" : "") }), h("span", { class: "num", text: info.rt + "%" }), info.rt < 60 ? "Rotten" : "Fresh"));
+        if (typeof info.mc === "number") scores.append(h("span", { class: "score", title: "Metacritic Metascore" },
+          h("span", { class: "ms " + msClass(info.mc), text: info.mc }), "Metascore"));
+        if (typeof info.rt !== "number" && typeof info.mc !== "number")
+          scores.append(h("span", { class: "score", text: p.lookup === "notfound" ? "Couldn't identify this movie" : "No scores yet" }));
+      }
+      const facts = [info.genre, info.runtime ? `${info.runtime} min` : null, info.rating].filter(Boolean).join(" · ");
+      const canRetry = S.sample && writable && (p.lookup === "failed" || p.lookup === "off" || p.lookup === "notfound");
+      const confirming = S.confirmRemove === p.id;
+
+      box.append(h("article", { class: "pick" + (pos >= 0 ? " ranked" : "") },
+        h("button", {
+          class: "rankbtn", type: "button",
+          "aria-label": pos >= 0 ? `Ranked ${pos + 1}. Tap to unrank ${p.title}` : `Rank ${p.title} next`,
+          onclick: () => toggleRank(p.id),
+        }, pos >= 0 ? String(pos + 1) : "+"),
+        h("div", { class: "pinfo" },
+          h("div", { class: "ptitle" }, p.title, info.year ? h("small", { text: info.year }) : null),
+          scores,
+          facts ? h("div", { class: "facts", text: facts }) : null,
+          info.logline ? h("p", { class: "logline", text: info.logline }) : null,
+          h("p", { class: "note" }, h("b", { text: label(p.addedByName) }), p.note ? `: “${p.note}”` : " nominated this"),
+          h("div", { class: "links" },
+            h("a", { href: `https://www.rottentomatoes.com/search?search=${q}`, target: "_blank", rel: "noopener", text: "Rotten Tomatoes ↗" }),
+            h("a", { href: `https://www.metacritic.com/search/${q}/`, target: "_blank", rel: "noopener", text: "Metacritic ↗" }),
+            canRetry ? h("button", { type: "button", onclick: () => lookup(p.id, p.title), text: "Look up scores" }) : null
+          )
+        ),
+        writable ? h("button", {
+          class: "remove" + (confirming ? " confirm" : ""), type: "button",
+          "aria-label": confirming ? `Confirm removing ${p.title}` : `Remove ${p.title}`,
+          onclick: () => removePick(p.id),
+        }, confirming ? "Remove?" : "✕") : h("span")
+      ));
+    });
+  }
+
+  // ---------- actions ----------
+  function askName() {
+    S.choosing = true; render();
+    const f = $("#myname"); f.focus(); f.scrollIntoView({ block: "center" });
+    toast("Type your name first, then tap to rank.");
+  }
+
+  function toggleRank(id) {
+    if (!S.db) { toast("The shared list isn't available here."); return; }
+    if (!S.canWrite) { toast("This view can't save votes."); return; }
+    if (!S.me) { askName(); return; }
+    const i = S.myOrder.indexOf(id);
+    if (i >= 0) S.myOrder.splice(i, 1); else S.myOrder.push(id);
+    queueSave();
+    render();
+  }
+
+  let saveTimer = null, saving = false, again = false;
+  function queueSave() {
+    S.dirty = true;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { saveTimer = null; flush(); }, 450);
+  }
+  async function flush() {
+    if (!S.me) return;
+    if (saving) { again = true; return; }
+    saving = true;
+    const key = meKey(), body = { name: S.me, night: nightId(), order: S.myOrder.slice(), updatedAt: Date.now() };
+    try {
+      await S.db.doc("ranks/" + key).set(body);
+    } catch (e) {
+      if (e && e.code === "invalid_argument") { S.canWrite = false; render(); }
+      toast("Couldn't save your ranking. Check your connection.");
+    }
+    saving = false;
+    if (again) { again = false; flush(); return; }
+    if (!saveTimer) S.dirty = false;
+  }
+
+  async function addPick(ev) {
+    ev.preventDefault();
+    const msg = $("#formmsg");
+    msg.textContent = "";
+    if (!S.me) { askName(); return; }
+    const title = $("#title").value.trim().replace(/\s+/g, " ");
+    const note = $("#note").value.trim();
+    if (!title) return;
+    const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (S.picks.some((p) => norm(p.title) === norm(title))) { msg.textContent = `${title} is already nominated.`; return; }
+    $("#addBtn").disabled = true;
+    try {
+      let info = null, lookupState = S.sample ? "pending" : "off";
+      if (!S.sample) {
+        const m = clean({ rt: $("#rtIn").value, mc: $("#mcIn").value });
+        if (m.rt != null || m.mc != null) { info = m; lookupState = "done"; }
+      }
+      const ref = await S.db.collection("picks").add({
+        night: nightId(), title, note, addedByName: S.me, createdAt: Date.now(),
+        lookup: lookupState, info,
+      });
+      $("#title").value = ""; $("#note").value = ""; $("#rtIn").value = ""; $("#mcIn").value = "";
+      if (S.sample) lookup(ref.id, title);
+    } catch (e) {
+      if (e && e.code === "invalid_argument") { S.canWrite = false; render(); }
+      msg.textContent = "Couldn't add that pick. Check your connection and try again.";
+    }
+    $("#addBtn").disabled = !S.canWrite;
+  }
+
+  function clean(r) {
+    const int = (v, lo, hi) => { if (v == null || v === "") return null; const n = Math.round(Number(v)); return Number.isFinite(n) && n >= lo && n <= hi ? n : null; };
+    const str = (v, n) => (typeof v === "string" && v.trim() ? v.trim().slice(0, n) : null);
+    return {
+      year: int(r.year, 1880, 2100), rt: int(r.rt, 0, 100), mc: int(r.mc, 0, 100),
+      runtime: int(r.runtime, 1, 600), rating: str(r.rating, 10), genre: str(r.genre, 40), logline: str(r.logline, 160),
+    };
+  }
+
+  async function lookup(id, title) {
+    const ref = S.db.doc("picks/" + id);
+    try { await ref.update({ lookup: "pending" }); } catch (e) {}
+    const prompt = `You are a film reference. From your own knowledge only, identify the movie a family typed in and report its review scores.
+Movie typed: ${JSON.stringify(title)}
+Reply with JSON only, this shape:
+{"found": true|false, "title": "official title", "year": 2017, "rt": 99, "mc": 88, "runtime": 103, "rating": "PG", "genre": "Family comedy", "logline": "One sentence, at most 15 words, no spoilers."}
+rt = Rotten Tomatoes Tomatometer percent (critics). mc = Metacritic Metascore (0-100). rating = MPAA rating if any.
+If the title is ambiguous, pick the best-known film. Use null for any number you are not confident about rather than guessing. If you cannot identify a movie, return {"found": false}.`;
+    try {
+      const r = await S.sample.json(prompt, { modelTier: "default" });
+      if (!r || r.found === false) { await ref.update({ lookup: "notfound" }); return; }
+      const patch = { info: clean(r), lookup: "done" };
+      const official = typeof r.title === "string" && r.title.trim() ? r.title.trim().slice(0, 120) : null;
+      if (official) patch.title = official;
+      await ref.update(patch);
+    } catch (e) {
+      if (e && e.code === "not_granted") S.sample = null;
+      if (e && e.code === "rate_limited") toast("Score lookups are busy. Try again in a minute.");
+      try { await ref.update({ lookup: "failed" }); } catch (_) {}
+    }
+  }
+
+  let removeTimer;
+  async function removePick(id) {
+    if (S.confirmRemove !== id) {
+      S.confirmRemove = id; render();
+      clearTimeout(removeTimer); removeTimer = setTimeout(() => { S.confirmRemove = null; render(); }, 3000);
+      return;
+    }
+    S.confirmRemove = null;
+    try { await S.db.doc("picks/" + id).delete(); } catch (e) { toast("Couldn't remove that pick."); }
+  }
+
+  let nightTimer;
+  async function newNight() {
+    if (!S.confirmNight) {
+      S.confirmNight = true; render();
+      clearTimeout(nightTimer); nightTimer = setTimeout(() => { S.confirmNight = false; render(); }, 3500);
+      return;
+    }
+    S.confirmNight = false;
+    const { ranked, voters } = tally();
+    const winner = voters.length ? ranked[0].p.title : null;
+    const old = S.picks.slice();
+    try {
+      await S.db.doc("meta/night").set({ id: Math.random().toString(36).slice(2, 10), startedAt: Date.now(), lastWinner: winner || S.night?.lastWinner || null });
+      for (const p of old) { try { await S.db.doc("picks/" + p.id).delete(); } catch (e) {} }
+      toast(winner ? `Saved ${winner} as last night's winner. Fresh list started.` : "Fresh list started.");
+    } catch (e) {
+      toast("Couldn't start a new night. Check your connection.");
+    }
+  }
+
+  // ---------- wiring ----------
+  $("#addForm").addEventListener("submit", addPick);
+  $("#nameForm").addEventListener("submit", (e) => { e.preventDefault(); setMe($("#myname").value); $("#myname").value = ""; });
+  $("#switchMe").addEventListener("click", () => { S.choosing = true; render(); $("#myname").focus(); });
+  $("#newNight").addEventListener("click", newNight);
+  $("#clearMine").addEventListener("click", () => { S.myOrder = []; queueSave(); render(); });
+
+  function refilter() {
+    S.picks = S.rawPicks
+      .filter((p) => (p.night || "first") === nightId() && typeof p.title === "string")
+      .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  }
+  function applyMyBallot() {
+    if (S.dirty) return;
+    const b = S.me ? S.ballots[meKey()] : null;
+    S.myOrder = b && b.night === nightId() && Array.isArray(b.order) ? b.order.slice() : [];
+  }
+  function pruneMine() {
+    if (!S.loaded.picks || !S.me) return;
+    const ids = new Set(S.picks.map((p) => p.id));
+    const kept = S.myOrder.filter((id) => ids.has(id));
+    if (kept.length !== S.myOrder.length) { S.myOrder = kept; queueSave(); }
+  }
+  function showNotice(t) { const n = $("#notice"); n.textContent = t; n.hidden = false; }
+
+  async function start() {
+    render();
+    const c = window.claude;
+    let db = null, sample = null;
+    if (c && typeof c.use === "function") [db, sample] = await Promise.all([c.use("db"), c.use("sample")]);
+    S.sample = sample;
+    if (db) {
+      S.db = db;
+    } else {
+      S.db = localDb(); S.local = true;
+      showNotice("Saved on this device only. Pass it around: each person taps Switch person, picks their name and ranks.");
+      $("#footer").textContent = "Scores are typed in by your family. Use the Rotten Tomatoes and Metacritic links on each movie to look them up.";
+    }
+    $("#manualScores").hidden = !!S.sample;
+    db = S.db;
+
+    const timer = setTimeout(() => { if (!S.loaded.picks || !S.loaded.ranks) { S.failed = true; render(); } }, 10000);
+    const onErr = () => { S.failed = true; render(); };
+
+    db.doc("meta/night").onSnapshot((snap) => {
+      const prev = nightId();
+      S.night = snap.exists ? snap.data() : { id: "first" };
+      if (nightId() !== prev) { S.dirty = false; refilter(); applyMyBallot(); }
+      render();
+    }, onErr);
+
+    db.collection("picks").onSnapshot((snap) => {
+      S.rawPicks = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      refilter();
+      S.loaded.picks = true;
+      if (S.loaded.ranks) clearTimeout(timer);
+      pruneMine();
+      render();
+    }, onErr);
+
+    db.collection("ranks").onSnapshot((snap) => {
+      const b = {};
+      snap.docs.forEach((d) => { b[d.id] = d.data(); });
+      S.ballots = b;
+      S.loaded.ranks = true;
+      if (S.loaded.picks) clearTimeout(timer);
+      applyMyBallot();
+      render();
+    }, onErr);
+  }
+
+  start();
+})();
+</script>
+
+</body>
+</html>
